@@ -1,0 +1,1 @@
+Namespace(cuda=0, dataroot='/home/CAMPUS/180178991/desenv/semanticSegmentation/datasets/facades+fake_B/', debug=False, epochs=100, lr=0.0002, model=101, outputFolder='/home/CAMPUS/180178991/desenv/semanticSegmentation/datasets/facades+fake_B/experiments/2020-03-17_17-59-25', seed=42)
