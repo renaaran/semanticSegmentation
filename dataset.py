@@ -9,6 +9,7 @@ import os
 import torch
 import numpy as np
 import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
 from torch.utils.data import Dataset
 
 from albumentations import (
@@ -24,7 +25,7 @@ NUM_LABELS = 12
 
 class FacadeDataset(Dataset):
 
-    LABELS = set([i for i in range(12)])
+    LABELS = set([i for i in range(NUM_LABELS)])
     AUGMENTS = [RandomRotate90(p=1),
                 HorizontalFlip(p=1),
                 VerticalFlip(p=1),

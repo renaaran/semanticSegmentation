@@ -75,7 +75,10 @@ def evaluate_test(exp):
     evaluate_test_dataset(device, exp, 'facades')
     evaluate_test_dataset(device, exp, 'facades+fake_B')
     evaluate_test_dataset(device, exp, 'facades+rec_B')
-
+    evaluate_test_dataset(device, exp, 'facades+fake_b+rec_B')
+    evaluate_test_dataset(device, exp, 'facade_aug')
+    evaluate_test_dataset(device, exp, 'facade+fake_B_aug')
+    
 def load_data(path, type, N=5):
     lines = []
     for i in range(N):
@@ -94,29 +97,34 @@ def errorbar(data, label, axis=0):
 def boxplot(data, labels):
     plt.boxplot(data, showmeans=True, labels=labels)
 
-def plotexp(title, facade, fakeb, recb):
+def plotexp(title, facade, fakeb, recb, frec):
+    plt.figure(figsize=(10,10))
     errorbar(facade, label='facades')
     errorbar(fakeb, label='fake_B')
     errorbar(recb, label='rec_B')
+    errorbar(frec, label='fake_B+rec_B')
     plt.xlabel('Epoch')
     plt.ylabel('mIoU')
     plt.title(title)
     plt.show()
-    boxplot([facade[:,-1], fakeb[:,-1], recb[:,-1]],
-            labels=['facades', 'fake_B', 'rec_B'])
+    plt.figure(figsize=(10,10))
+    boxplot([facade[:,-1], fakeb[:,-1], recb[:,-1], frec[:,-1]],
+            labels=['facades', 'fake_B', 'rec_B', 'fake_B+rec_B'])
     plt.ylabel('mIoU')
     plt.title(title)
     plt.show()
 
-    print(np.mean([facade[:,-1], fakeb[:,-1], recb[:,-1]], axis=1))
-    print(np.std([facade[:,-1], fakeb[:,-1], recb[:,-1]], axis=1))
+    print(np.mean([facade[:,-1], fakeb[:,-1], recb[:,-1], frec[:,-1]], axis=1))
+    print(np.std([facade[:,-1], fakeb[:,-1], recb[:,-1], frec[:,-1]], axis=1))
 
     print('Fake_B/facades = ',
           np.round(np.mean(fakeb[:,-1])/np.mean(facade[:,-1]), 3))
     print('Rec_B/facades = ',
           np.round(np.mean(recb[:,-1])/np.mean(facade[:,-1]), 3))
-
-    return np.mean([facade[:,-1], fakeb[:,-1], recb[:,-1]], axis=1)
+    print('fake_B+rec_B/facades = ',
+          np.round(np.mean(frec[:,-1])/np.mean(facade[:,-1]), 3))
+    
+    return np.mean([facade[:,-1], fakeb[:,-1], recb[:,-1], frec[:,-1]], axis=1)
 
 def plotbest(data):
     best = 0
@@ -140,7 +148,12 @@ def load_data_and_plot(exp):
                    'experiments',
                    exp)
     recb = load_data(path, 'miou')
-    plotexp(exp, facade, fakeb, recb)
+    path = os.path.join(opt.dataroot,
+                   'facades+fake_B+rec_B',
+                   'experiments',
+                   exp)
+    frec = load_data(path, 'miou')
+    plotexp(exp, facade, fakeb, recb, frec)
 
 def load_data_and_plot_earlystop(exp):
     path = os.path.join(opt.dataroot,
@@ -166,22 +179,38 @@ def load_data_and_plot_earlystop(exp):
                    'experiments',
                    exp)
     rfb = load_data(path, 'miou')
+    
+    path = os.path.join(opt.dataroot,
+                   'facades_aug',
+                   'experiments',
+                   exp)
+    facade_aug = load_data(path, 'miou')
 
+    path = os.path.join(opt.dataroot,
+                   'facades+fake_B_aug',
+                   'experiments',
+                   exp)
+    fakeb_aug = load_data(path, 'miou')
+    
+    plt.figure(figsize=(10,10))
     plotbest(facade)
     plotbest(fakeb)
     plotbest(recb)
     plotbest(rfb)
-    plt.legend(['facades', 'fake_b', 'rec_b', 'rec_b+fake_b'])
+    plotbest(facade_aug)
+    plotbest(fakeb_aug)
+    plt.legend(['facades', 'fake_b', 'rec_b', 
+                'rec_b+fake_b', 'facade (aug)', 'fake_b (aug)'])
     plt.xlabel('Epoch')
     plt.ylabel('mIoU')
     plt.title(exp)
     plt.show()
 
 if __name__ == "__main__":
-#    load_data_and_plot('ResNet50,lr=0.001,epochs=50')
-#    load_data_and_plot('ResNet101,lr=0.001,epochs=50')
+    load_data_and_plot('ResNet50,lr=0.001,epochs=50')
+    load_data_and_plot('ResNet101,lr=0.001,epochs=50')
     load_data_and_plot('ResNet101,lr=0.0002,epochs=100')
     load_data_and_plot('ResNet101,lr=0.0002,epochs=50')
-#    load_data_and_plot('ResNet50,lr=0.0002,epochs=50')
+    load_data_and_plot('ResNet50,lr=0.0002,epochs=50')
     load_data_and_plot_earlystop('ResNet101,lr=0.0002,epochs=50,earlystop')
-    evaluate_test('ResNet101,lr=0.0002,epochs=50,earlystop')
+#    evaluate_test('ResNet101,lr=0.0002,epochs=50,earlystop')
