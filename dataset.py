@@ -21,9 +21,9 @@ from albumentations import (
 
 from PIL import Image
 
-NUM_LABELS = 12
-
 class FacadeDataset(Dataset):
+
+    NUM_LABELS = 12
 
     LABELS = set([i for i in range(NUM_LABELS)])
     AUGMENTS = [RandomRotate90(p=1),
@@ -67,6 +67,43 @@ class FacadeDataset(Dataset):
         lbl = np.array(self.__read(index+1, 'png'))-1
         if self.augment:
             img, lbl = self.__transform(img, lbl)
+        img = self.preprocess(img)
+        lbl = torch.tensor(lbl)
+        assert set(np.unique(lbl)).issubset(self.LABELS), \
+            print(index, set(np.unique(lbl)))
+        return img, lbl.long()
+
+class GeoDataset(Dataset):
+
+    NUM_LABELS = 2
+
+    LABELS = set([i for i in range(NUM_LABELS)])
+
+    def __init__(self, root_dir, root='train'):
+        self.root_dir = root_dir
+        self.root = root
+        self.files_count = 0
+        for _ in os.listdir(os.path.join(self.root_dir, root)):
+            self.files_count += 1
+        assert self.files_count%2 == 0
+        self.files_count //= 2
+        self.preprocess = transforms.Compose([
+             transforms.ToTensor(),
+             transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                   std=[0.229, 0.224, 0.225]),
+         ])
+
+    def __len__(self):
+        return self.files_count
+
+    def __read(self, index, ext):
+        file_name = f'{index}.{ext}'
+        img_path = os.path.join(self.root_dir, self.root, file_name)
+        return Image.open(img_path)
+
+    def __getitem__(self, index):
+        img = np.array(self.__read(index+1, 'jpg'))
+        lbl = np.array(self.__read(index+1, 'png'))
         img = self.preprocess(img)
         lbl = torch.tensor(lbl)
         assert set(np.unique(lbl)).issubset(self.LABELS), \

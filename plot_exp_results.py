@@ -86,6 +86,7 @@ def load_data(path, type, N=5):
         file = open(file_path, 'r')
         for line in file.readlines():
             tmp = [float(v) for v in line.split(',')]
+            #tmp = [0]*(50-len(tmp))+tmp
             lines.append(tmp)
     return np.array(lines)
 
@@ -98,7 +99,7 @@ def boxplot(data, labels):
     plt.boxplot(data, showmeans=True, labels=labels)
 
 def plotexp(title, facade, fakeb, recb, frec):
-    plt.figure(figsize=(10,10))
+    plt.figure(figsize=(15,15))
     errorbar(facade, label='facades')
     errorbar(fakeb, label='fake_B')
     errorbar(recb, label='rec_B')
@@ -107,15 +108,17 @@ def plotexp(title, facade, fakeb, recb, frec):
     plt.ylabel('mIoU')
     plt.title(title)
     plt.show()
-    plt.figure(figsize=(10,10))
+    plt.figure(figsize=(15,15))
     boxplot([facade[:,-1], fakeb[:,-1], recb[:,-1], frec[:,-1]],
             labels=['facades', 'fake_B', 'rec_B', 'fake_B+rec_B'])
     plt.ylabel('mIoU')
     plt.title(title)
     plt.show()
 
-    print(np.mean([facade[:,-1], fakeb[:,-1], recb[:,-1], frec[:,-1]], axis=1))
-    print(np.std([facade[:,-1], fakeb[:,-1], recb[:,-1], frec[:,-1]], axis=1))
+    print(np.round(np.mean([facade[:,-1], fakeb[:,-1], recb[:,-1], frec[:,-1]], 
+                           axis=1), 3))
+    print(np.round(np.std([facade[:,-1], fakeb[:,-1], recb[:,-1], frec[:,-1]], 
+                          axis=1), 3))
 
     print('Fake_B/facades = ',
           np.round(np.mean(fakeb[:,-1])/np.mean(facade[:,-1]), 3))
@@ -192,7 +195,7 @@ def load_data_and_plot_earlystop(exp):
                    exp)
     fakeb_aug = load_data(path, 'miou')
     
-    plt.figure(figsize=(10,10))
+    plt.figure(figsize=(15,15))
     plotbest(facade)
     plotbest(fakeb)
     plotbest(recb)
@@ -205,6 +208,23 @@ def load_data_and_plot_earlystop(exp):
     plt.ylabel('mIoU')
     plt.title(exp)
     plt.show()
+    
+    
+    # print(np.round(np.mean([facade[:,-1], fakeb[:,-1], recb[:,-1], rfb[:,-1], 
+    #                        facade_aug[:,-1], fakeb_aug[:,-1]], axis=1), 3))
+    # print(np.round(np.std([facade[:,-1], fakeb[:,-1], recb[:,-1], rfb[:,-1], 
+    #                        facade_aug[:,-1], fakeb_aug[:,-1]], axis=1), 3))
+
+    # print('Fake_B/facades = ',
+    #       np.round(np.mean(fakeb[:,-1])/np.mean(facade[:,-1]), 3))
+    # print('Rec_B/facades = ',
+    #       np.round(np.mean(recb[:,-1])/np.mean(facade[:,-1]), 3))
+    # print('fake_B+rec_B/facades = ',
+    #       np.round(np.mean(rfb[:,-1])/np.mean(facade[:,-1]), 3))
+    # print('facade (aug)/facades = ',
+    #       np.round(np.mean(facade_aug[:,-1])/np.mean(facade[:,-1]), 3))
+    # print('fake_b (aug)/facades = ',
+    #       np.round(np.mean(fakeb_aug[:,-1])/np.mean(facade[:,-1]), 3))
 
 if __name__ == "__main__":
     load_data_and_plot('ResNet50,lr=0.001,epochs=50')
@@ -213,4 +233,4 @@ if __name__ == "__main__":
     load_data_and_plot('ResNet101,lr=0.0002,epochs=50')
     load_data_and_plot('ResNet50,lr=0.0002,epochs=50')
     load_data_and_plot_earlystop('ResNet101,lr=0.0002,epochs=50,earlystop')
-#    evaluate_test('ResNet101,lr=0.0002,epochs=50,earlystop')
+    evaluate_test('ResNet101,lr=0.0002,epochs=50,earlystop')

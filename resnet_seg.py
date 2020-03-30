@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader
 
 from utils import initialize_seeds, initialize_torch, calc_iou
-from dataset import FacadeDataset, NUM_LABELS
+from dataset import GeoDataset, NUM_LABELS
 from config import opt
 
 from torchvision.models.segmentation import deeplabv3_resnet50, \
@@ -30,13 +30,13 @@ def load_model():
     model = model.to(device)
 
 def create_dataset():
-    global train_loader, test_loader
-    train_dataset = FacadeDataset(opt.dataroot, opt.augment, root='train')
+    global train_loader, eval_loader
+    train_dataset = GeoDataset(opt.dataroot, opt.augment, root='train')
     print(f'train_dataset size={len(train_dataset)}')
     train_loader = DataLoader(train_dataset, shuffle=True, batch_size=16)
-    test_dataset = FacadeDataset(opt.dataroot, opt.augment, root='test')
-    print(f'test_dataset size={len(test_dataset)}')
-    test_loader = DataLoader(test_dataset, shuffle=True, batch_size=1)
+    eval_dataset = GeoDataset(opt.dataroot, opt.augment, root='eval')
+    print(f'eval_dataset size={len(eval_dataset)}')
+    eval_loader = DataLoader(eval_dataset, shuffle=True, batch_size=1)
 
 def initialise():
     global device, ngpu, dtframe
@@ -88,7 +88,7 @@ def train(run, epochs):
         val = 0
         iou = []
         model.eval()
-        for X, y in test_loader:
+        for X, y in eval_loader:
             X = X.to(device)
             y = y.to(device)
             output = model(X)['out']
@@ -133,34 +133,6 @@ def train(run, epochs):
                os.path.join(opt.outputFolder, f'model_{run}.pth'))
 
     return val_loss[-1], epoch_loss[-1], acc[-1], miou[-1]
-
-def test_model_creat():
-    SIZE = 224
-    IMG_SIZE = (SIZE, SIZE)
-    from torchsummary import summary
-    import numpy as np
-    import torchvision.transforms as transforms
-
-    #model = SemanticResnet18(3, 12)
-    model = deeplabv3_resnet50(num_classes=NUM_LABELS, pretrained=False)
-    print(model)
-    summary(model.cuda(), (3, *IMG_SIZE))
-    input_images = np.random.randn(2, *IMG_SIZE, 3)
-    input_tensor = torch.zeros((2, 3, *IMG_SIZE))
-
-    preprocess = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                              std=[0.229, 0.224, 0.225]),
-    ])
-
-    for i in range(input_images.shape[0]):
-        input_tensor[i] = preprocess(input_images[i])
-
-    input_tensor = input_tensor.cuda()
-    # create a mini-batch as expected by the model
-    input_batch = input_tensor.float()
-    model(input_batch)
 
 if __name__ == "__main__":
     epoch_loss = []
