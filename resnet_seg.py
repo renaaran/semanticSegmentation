@@ -14,53 +14,6 @@ from torch.utils.data import DataLoader
 from utils import initialize_seeds, initialize_torch, calc_iou
 from config import opt
 
-from torch.nn.parallel.data_parallel import DataParallel
-
-class CallbackContext(object):
-    pass
-
-def execute_replication_callbacks(modules):
-    """
-    Execute an replication callback `__data_parallel_replicate__` on each module created by original replication.
-
-    The callback will be invoked with arguments `__data_parallel_replicate__(ctx, copy_id)`
-
-    Note that, as all modules are isomorphism, we assign each sub-module with a context
-    (shared among multiple copies of this module on different devices).
-    Through this context, different copies can share some information.
-
-    We guarantee that the callback on the master copy (the first copy) will be called ahead of calling the callback
-    of any slave copies.
-    """
-    master_copy = modules[0]
-    nr_modules = len(list(master_copy.modules()))
-    ctxs = [CallbackContext() for _ in range(nr_modules)]
-
-    for i, module in enumerate(modules):
-        for j, m in enumerate(module.modules()):
-            if hasattr(m, '__data_parallel_replicate__'):
-                m.__data_parallel_replicate__(ctxs[j], i)
-
-class DataParallelWithCallback(DataParallel):
-    """
-    Data Parallel with a replication callback.
-
-    An replication callback `__data_parallel_replicate__` of each module will be invoked after being created by
-    original `replicate` function.
-    The callback will be invoked with arguments `__data_parallel_replicate__(ctx, copy_id)`
-
-    Examples:
-        > sync_bn = SynchronizedBatchNorm1d(10, eps=1e-5, affine=False)
-        > sync_bn = DataParallelWithCallback(sync_bn, device_ids=[0, 1])
-        # sync_bn.__data_parallel_replicate__ will be invoked.
-    """
-
-    def replicate(self, module, device_ids):
-        modules = super(DataParallelWithCallback, self).replicate(module, device_ids)
-        execute_replication_callbacks(modules)
-        return modules
-
-
 def load_model(model_name):
     model_lib = importlib.import_module('torchvision.models.segmentation')
     for name, cls in model_lib.__dict__.items():
@@ -87,24 +40,21 @@ def create_dataset(dataset_name):
         raise ValueError(f"{dataset_name} not found!")
 
     print('**** Dataset:', dataset_name)
-    train_dataset = dataset_class(opt.dataroot, root='train',
-                                  augment=opt.augment)
+    train_dataset = dataset_class(opt.dataroot, root='train', augment=opt.augment)
     print(f'train_dataset size={len(train_dataset)}')
-    train_loader = DataLoader(train_dataset, shuffle=True, batch_size=16, num_workers=8)
-    val_dataset = dataset_class(opt.dataroot, root='val',
-                                augment=False)
+    train_loader = DataLoader(train_dataset, shuffle=True, batch_size=16, num_workers=8, drop_last=True)
+    val_dataset = dataset_class(opt.dataroot, root='val', augment=False)
     print(f'val_dataset size={len(val_dataset)}')
-    val_loader = DataLoader(val_dataset, shuffle=True, batch_size=4, num_workers=8)
-
+    val_loader = DataLoader(val_dataset, shuffle=True, batch_size=4, num_workers=4)
 
 def initialise():
     global model, device, ngpu
     initialize_seeds(opt.seed)
     device, ngpu = initialize_torch(opt.cuda)
     model = load_model(opt.model_name)
-    model = DataParallelWithCallback(model, device_ids=[0, 1, 2, 3])
+    if (device.type == 'cuda') and (ngpu > 1):
+        model = nn.DataParallel(model, device_ids=list(range(ngpu)))
     create_dataset(opt.dataset_name)
-
 
 def save_file(file_name, data):
     text_file = open(os.path.join(opt.outputFolder, file_name), "w")

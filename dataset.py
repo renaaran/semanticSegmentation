@@ -12,6 +12,7 @@ import glob
 import torch
 import numpy as np
 import torchvision.transforms as transforms
+import albumentations as A
 
 from torch.utils.data import Dataset
 from random import shuffle
@@ -44,20 +45,12 @@ class AugmentedDataset(BaseDataset):
     def __init__(self, root_dir, root='train', augments=None):
         super().__init__(root_dir, root)
         self.augments = augments
-        if augments is not None:
-            self.augments.append(A.Flip(p=0.0))
-            self.aug_order = list(range(len(self.augments)))*self.files_count
-            shuffle(self.aug_order)
-            self.files_count *= len(self.augments)
 
-    def _transform(self, index, img, lbl):
-        #print(index, self.aug_order[index])
-        index = self.aug_order[index]
-        aug = self.augments[index](image=img, mask=lbl)
-        return aug['image'], aug['mask']
+    def _transform(self, img, lbl):
+        augmented = self.augments(image=img, mask=lbl)
+        return augmented['image'], augmented['mask']
 
     def _read(self, index, ext):
-        #print(index, index % len(self.files))
         index = index % len(self.files)
         return super()._read(index, ext)
 
@@ -228,6 +221,45 @@ class CityscapeDataset(AugmentedDataset):
         lbl = np.array(super()._read(index, 'png'))
         if self.augments is not None:
             img, lbl = self._transform(index, img, lbl)
+        img = self.preprocess(img)
+        lbl = torch.tensor(lbl)
+        assert set(np.unique(lbl)).issubset(self.LABELS), \
+            print(index, set(np.unique(lbl)))
+        return img, lbl.long()
+
+class PodDataset(AugmentedDataset):
+
+    NUM_LABELS = 2
+    LABELS = set([i for i in range(NUM_LABELS)])
+
+    def __init__(self, root_dir, augment=False, root='train',
+        return_name=False):
+        if augment:
+            print('Augment ON!:)')
+            # augments = A.Compose([
+            #     A.RandomSizedCrop(min_max_height=(128, 200), height=256, width=512, p=0.5),
+            #     A.HorizontalFlip(p=0.5),
+            #     A.RandomBrightnessContrast(p=0.2),
+            # ])
+            augments = A.Compose([
+                A.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.2, rotate_limit=30, p=0.5),
+                A.RGBShift(r_shift_limit=25, g_shift_limit=25, b_shift_limit=25, p=0.5),
+                A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.5),
+            ])            
+            super().__init__(root_dir, root=root, augments=augments)
+        else:
+            super().__init__(root_dir, root=root)
+        self.preprocess = transforms.Compose([
+             transforms.ToTensor(),
+             transforms.Normalize(mean=[0.5, 0.5, 0.5],
+                                   std=[0.5, 0.5, 0.5]),
+         ])
+
+    def __getitem__(self, index):
+        img = np.array(self._read(index, 'jpg'))
+        lbl = np.array(self._read(index, 'png'))
+        if self.augments is not None:
+            img, lbl = self._transform(img, lbl)
         img = self.preprocess(img)
         lbl = torch.tensor(lbl)
         assert set(np.unique(lbl)).issubset(self.LABELS), \

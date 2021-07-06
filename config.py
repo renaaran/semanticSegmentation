@@ -15,8 +15,7 @@ parser.add_argument('--epochs', type=int, default=50,
                     help='number of epochs to train')
 parser.add_argument('--lr', type=float, default=0.001,
                     help='learning rate')
-parser.add_argument('--augment',
-                    action='store_true',
+parser.add_argument('--augment', action='store_true',
                     default=False,
                     help='augment the dataset')
 parser.add_argument('--earlystop',
