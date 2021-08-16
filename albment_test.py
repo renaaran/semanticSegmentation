@@ -23,7 +23,7 @@ def visualize_augmentations(img: Image, lbl: Image) -> None:
     plt.tight_layout()
     plt.show()
 
-if __name__ == '__main__':
+def test1():
     # augments = A.Compose([
     #     A.RandomSizedCrop(min_max_height=(128, 256), height=256, width=512, p=0.5),
     #     A.HorizontalFlip(p=1),
@@ -41,5 +41,23 @@ if __name__ == '__main__':
     lbl1 = Image.open('/home/renato/desenv/semanticSegmentation/datasets/pod500/train/run_1_47.png')
     
     augmented = augments(image=np.array(img1), mask=np.array(lbl1))
-     
+    return img1, lbl1, augmented
+        
+def test2():
+    img1 = Image.open('/home/renato/desenv/semanticSegmentation/datasets/pod500/train/run_1_47.jpg')
+    lbl1 = Image.open('/home/renato/desenv/semanticSegmentation/datasets/pod500/train/run_1_47.png')
+    
+    transform = A.Compose([
+        A.HorizontalFlip(p=0.566),
+        A.RandomToneCurve(p=0.566),
+        A.RandomBrightnessContrast(p=0.566),
+    ])
+    augmented = transform(image=np.array(img1), mask=np.array(lbl1))
+    return img1, lbl1, augmented
+    
+if __name__ == '__main__':
+
+    img1, lbl1, augmented = test2()
+    print(np.array(img1).shape, augmented['image'].shape)
+    print(type(augmented['image']), augmented['image'].dtype)
     visualize_augmentations([img1, augmented['image']], [lbl1, augmented['mask']])

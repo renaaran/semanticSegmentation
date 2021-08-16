@@ -22,7 +22,8 @@ parser.add_argument('--earlystop',
                     action='store_true',
                     default=False,
                     help='early stopping')
-
+parser.add_argument('--N', type=int, default=3)
+parser.add_argument('--M', type=int, default=5)
 
 opt = parser.parse_args()
 

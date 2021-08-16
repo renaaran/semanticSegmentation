@@ -10,10 +10,13 @@ Definitions for the facade and geospatial datasets.
 import os
 import glob
 import torch
+import random
 import numpy as np
 import torchvision.transforms as transforms
 import albumentations as A
+from config import opt
 
+from randaugment import RandAugment
 from torch.utils.data import Dataset
 from random import shuffle
 
@@ -234,32 +237,23 @@ class PodDataset(AugmentedDataset):
 
     def __init__(self, root_dir, augment=False, root='train',
         return_name=False):
-        if augment:
-            print('Augment ON!:)')
-            # augments = A.Compose([
-            #     A.RandomSizedCrop(min_max_height=(128, 200), height=256, width=512, p=0.5),
-            #     A.HorizontalFlip(p=0.5),
-            #     A.RandomBrightnessContrast(p=0.2),
-            # ])
-            augments = A.Compose([
-                A.ShiftScaleRotate(shift_limit=0.2, scale_limit=0.2, rotate_limit=30, p=0.5),
-                A.RGBShift(r_shift_limit=25, g_shift_limit=25, b_shift_limit=25, p=0.5),
-                A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.5),
-            ])            
-            super().__init__(root_dir, root=root, augments=augments)
-        else:
-            super().__init__(root_dir, root=root)
+        super().__init__(root_dir, root=root)
         self.preprocess = transforms.Compose([
              transforms.ToTensor(),
              transforms.Normalize(mean=[0.5, 0.5, 0.5],
                                    std=[0.5, 0.5, 0.5]),
-         ])
+        ])
+        self.augment = augment
+        if self.augment:
+            print('Augment ON!:)')
+            img = np.array(self._read(1, 'jpg'))            
+            self.randaug = RandAugment(imgsz=img.shape, n=opt.N, m=opt.M)
 
     def __getitem__(self, index):
         img = np.array(self._read(index, 'jpg'))
         lbl = np.array(self._read(index, 'png'))
-        if self.augments is not None:
-            img, lbl = self._transform(img, lbl)
+        if self.augment:
+            img, lbl = self.randaug(np.array(img), np.array(lbl))
         img = self.preprocess(img)
         lbl = torch.tensor(lbl)
         assert set(np.unique(lbl)).issubset(self.LABELS), \
